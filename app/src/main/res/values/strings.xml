@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Daisywheel</string>
+    <string name="daisywheel_settings">Daisywheel Settings</string>
+    <string name="ime_name">Daisywheel Keyboard</string>
+</resources>
