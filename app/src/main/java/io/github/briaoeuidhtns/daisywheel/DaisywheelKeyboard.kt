@@ -1,5 +1,9 @@
 package io.github.briaoeuidhtns.daisywheel
 
+import android.util.Log
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.View
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -9,6 +13,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -16,8 +21,12 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 data class DaisyPetal(
     val characters: List<Char>,
@@ -31,8 +40,9 @@ fun DaisyWheelKeyboard(
     modifier: Modifier = Modifier
 ) {
     var selectedPetalIndex by remember { mutableIntStateOf(0) }
-    var selectedCharIndex by remember { mutableIntStateOf(-1) }
+    val selectedCharIndex by remember { mutableIntStateOf(-1) }
     val textMeasurer = rememberTextMeasurer()
+    val view = LocalView.current.rootView
 
     // Define the petals with their characters, starting from top (0 degrees)
     val petals = remember {
@@ -48,48 +58,45 @@ fun DaisyWheelKeyboard(
         )
     }
 
-    Canvas(
-        modifier = modifier
-            .size(300.dp)
-            .focusable()
-            .onKeyEvent { keyEvent ->
-                when {
-                    keyEvent.type == KeyEventType.KeyDown -> {
-                        when (keyEvent.key) {
-                            Key.DirectionRight -> {
-                                selectedPetalIndex = (selectedPetalIndex + 1) % petals.size
-                                true
+    DisposableEffect(view) {
+        val callback = View.OnGenericMotionListener { _, event ->
+            if (event.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK) {
+                when (event.action) {
+                    MotionEvent.ACTION_MOVE -> {
+                        // Get joystick position
+                        val xAxis = event.getAxisValue(MotionEvent.AXIS_X)
+                        val yAxis = event.getAxisValue(MotionEvent.AXIS_Y)
+
+                        // Only update if stick is moved beyond dead zone
+                        if (sqrt(xAxis * xAxis + yAxis * yAxis) > 0.5f) {
+                            // Calculate angle in degrees
+                            val angle = (Math.toDegrees(atan2(yAxis, xAxis).toDouble()).toFloat() + 360) % 360
+
+                            // Find closest petal
+                            val newIndex = petals.indices.minBy { index ->
+                                val diff = abs(angle - petals[index].angle)
+                                min(diff, 360 - diff)
                             }
-                            Key.DirectionLeft -> {
-                                selectedPetalIndex = (selectedPetalIndex - 1 + petals.size) % petals.size
-                                true
-                            }
-                            Key.DirectionUp -> {
-                                if (selectedCharIndex == -1) selectedCharIndex = 0
-                                else selectedCharIndex = (selectedCharIndex + 1) % 4
-                                true
-                            }
-                            Key.DirectionDown -> {
-                                if (selectedCharIndex > 0) {
-                                    selectedCharIndex--
-                                } else {
-                                    selectedCharIndex = -1
-                                }
-                                true
-                            }
-                            Key.Enter -> {
-                                if (selectedCharIndex != -1) {
-                                    onCharacterSelected(petals[selectedPetalIndex].characters[selectedCharIndex])
-                                    selectedCharIndex = -1
-                                }
-                                true
-                            }
-                            else -> false
+                            selectedPetalIndex = newIndex
                         }
+                        true
                     }
                     else -> false
                 }
-            }
+            } else false
+        }
+
+        // Add the motion listener to the view
+        view.setOnGenericMotionListener(callback)
+
+        onDispose {
+            view.setOnGenericMotionListener(null)
+        }
+    }
+
+    Canvas(
+        modifier = modifier
+            .size(300.dp)
     ) {
         // Draw center circle
         drawCircle(
@@ -103,7 +110,6 @@ fun DaisyWheelKeyboard(
             drawPetal(
                 petal = petal,
                 isSelected = index == selectedPetalIndex,
-                isCharacterSelected = selectedCharIndex != -1,
                 selectedCharIndex = selectedCharIndex,
                 textMeasurer = textMeasurer
             )
@@ -114,7 +120,6 @@ fun DaisyWheelKeyboard(
 private fun DrawScope.drawPetal(
     petal: DaisyPetal,
     isSelected: Boolean,
-    isCharacterSelected: Boolean,
     selectedCharIndex: Int,
     textMeasurer: TextMeasurer
 ) {

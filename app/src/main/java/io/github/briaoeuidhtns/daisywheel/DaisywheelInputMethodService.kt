@@ -1,6 +1,8 @@
 package io.github.briaoeuidhtns.daisywheel
 
 import android.inputmethodservice.InputMethodService
+import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
@@ -65,6 +67,11 @@ class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, 
                 currentInputConnection?.commitText(char.toString(), 1)
             }
         )
+    }
+
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        return window?.window?.decorView?.dispatchGenericMotionEvent(event)
+            ?: super.onGenericMotionEvent(event)
     }
 
     override fun onDestroy() {
