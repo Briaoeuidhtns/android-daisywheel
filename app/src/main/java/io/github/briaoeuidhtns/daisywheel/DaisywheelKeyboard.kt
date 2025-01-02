@@ -24,9 +24,9 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 data class DaisyPetal(
     val characters: List<Char>,
@@ -39,7 +39,7 @@ fun DaisyWheelKeyboard(
     onCharacterSelected: (Char) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedPetalIndex by remember { mutableIntStateOf(0) }
+    var selectedPetalIndex by remember { mutableIntStateOf(-1) }
     val selectedCharIndex by remember { mutableIntStateOf(-1) }
     val textMeasurer = rememberTextMeasurer()
     val view = LocalView.current.rootView
@@ -78,7 +78,7 @@ fun DaisyWheelKeyboard(
                                 min(diff, 360 - diff)
                             }
                             selectedPetalIndex = newIndex
-                        }
+                        } else selectedPetalIndex = -1
                         true
                     }
                     else -> false
@@ -100,7 +100,7 @@ fun DaisyWheelKeyboard(
     ) {
         // Draw center circle
         drawCircle(
-            color = Color.DarkGray,
+            color = if (selectedPetalIndex == -1) Color.Blue else Color.DarkGray,
             radius = 30f,
             center = center
         )
