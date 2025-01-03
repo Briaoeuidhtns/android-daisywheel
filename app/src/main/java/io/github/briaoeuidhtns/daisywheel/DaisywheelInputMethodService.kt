@@ -1,7 +1,10 @@
 package io.github.briaoeuidhtns.daisywheel
 
 import android.inputmethodservice.InputMethodService
+import android.os.Debug
 import android.util.Log
+import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import androidx.compose.runtime.Composable
@@ -13,11 +16,15 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import kotlin.math.atan2
+import kotlin.math.hypot
+import kotlin.math.PI
 
 class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, LifecycleOwner,
     SavedStateRegistryOwner {
@@ -60,18 +67,97 @@ class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, 
     private fun DaisywheelKeyboardScreen(
         viewModel: DaisywheelViewModel = viewModel(factory = DaisywheelViewModel.Factory)
     ) {
+        Debug.waitForDebugger()
         DaisyWheelKeyboard(
-            onCharacterSelected = { char ->
-                viewModel.onCharacterConfirmed(char)
-                // Send the character to the input connection
-                currentInputConnection?.commitText(char.toString(), 1)
-            }
+            viewModel = viewModel,
         )
     }
 
+    companion object {
+        private const val JOYSTICK_DEADZONE = 0.5f
+
+        /**
+         * Calculates the petal index from joystick coordinates.
+         * @param x X-axis position (-1 to 1)
+         * @param y Y-axis position (-1 to 1)
+         * @return Petal index (0-7) or -1 if within deadzone
+         */
+        fun calculatePetalIndex(x: Float, y: Float): Int {
+            val magnitude = hypot(x, y)
+            if (magnitude <= JOYSTICK_DEADZONE) return -1
+
+            // Calculate angle in radians, starting from right (0°)
+            val angle = atan2(y, x)
+            // Convert to degrees and normalize to 0-360
+            val degrees = Math.toDegrees(angle.toDouble())
+            val normalizedDegrees = (degrees + 360.0) % 360.0
+            
+            // Find the closest petal angle
+            // Layout: Top(270°)=0, TopRight(315°)=1, Right(0°)=2, BottomRight(45°)=3,
+            //        Bottom(90°)=4, BottomLeft(135°)=5, Left(180°)=6, TopLeft(225°)=7
+            return when {
+                normalizedDegrees >= 337.5 || normalizedDegrees < 22.5 -> 2  // Right
+                normalizedDegrees < 67.5 -> 3   // Bottom-Right
+                normalizedDegrees < 112.5 -> 4  // Bottom
+                normalizedDegrees < 157.5 -> 5  // Bottom-Left
+                normalizedDegrees < 202.5 -> 6  // Left
+                normalizedDegrees < 247.5 -> 7  // Top-Left
+                normalizedDegrees < 292.5 -> 0  // Top
+                else -> 1  // Top-Right (292.5-337.5)
+            }
+        }
+
+        /**
+         * Processes a motion event to extract joystick position.
+         * @param event The motion event to process
+         * @return Pair of (isJoystickMove, petalIndex) where petalIndex is -1 if not applicable
+         */
+        fun processJoystickEvent(event: MotionEvent): Pair<Boolean, Int> {
+            if (event.source and InputDevice.SOURCE_JOYSTICK != InputDevice.SOURCE_JOYSTICK) {
+                return Pair(false, -1)
+            }
+
+            if (event.action != MotionEvent.ACTION_MOVE) {
+                return Pair(false, -1)
+            }
+
+            val xAxis = event.getAxisValue(MotionEvent.AXIS_X)
+            val yAxis = event.getAxisValue(MotionEvent.AXIS_Y)
+            return Pair(true, calculatePetalIndex(xAxis, yAxis))
+        }
+    }
+
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        return window?.window?.decorView?.dispatchGenericMotionEvent(event)
-            ?: super.onGenericMotionEvent(event)
+        val (isJoystickMove, petalIndex) = processJoystickEvent(event)
+        if (!isJoystickMove) return false
+
+        val viewModel = ViewModelProvider(this, DaisywheelViewModel.Factory)[DaisywheelViewModel::class.java]
+        viewModel.selectPetal(petalIndex)
+        return true
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        val viewModel = ViewModelProvider(this, DaisywheelViewModel.Factory)[DaisywheelViewModel::class.java]
+        
+        return when (keyCode) {
+            KeyEvent.KEYCODE_BUTTON_A -> {
+                viewModel.selectChar(0)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_B -> {
+                viewModel.selectChar(1)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_X -> {
+                viewModel.selectChar(2)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_Y -> {
+                viewModel.selectChar(3)
+                true
+            }
+            else -> super.onKeyDown(keyCode, event)
+        }
     }
 
     override fun onDestroy() {

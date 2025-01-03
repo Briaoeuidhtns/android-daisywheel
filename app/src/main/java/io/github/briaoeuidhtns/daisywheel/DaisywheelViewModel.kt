@@ -19,7 +19,7 @@ data class DaisyPetal(
 )
 
 data class DaisywheelState(
-    val selectedPetalIndex: Int = 0,
+    val selectedPetalIndex: Int = -1,
     val petals: List<DaisyPetal> = defaultLayout,
 )
 
@@ -41,44 +41,46 @@ enum class DaisywheelModifier {
 }
 
 class DaisywheelViewModel : ViewModel() {
-    private val _petalSelected = MutableSharedFlow<Int>()
-    private val _charSelected = MutableSharedFlow<Int>()
-    private val _modifierSelected = MutableSharedFlow<Pair<DaisywheelModifier, Boolean>>()
+    private val _petalSelected = MutableSharedFlow<Int>(replay = 1)
+    private val _charSelected = MutableSharedFlow<Int>(replay = 1)
+    private val _modifierSelected = MutableSharedFlow<Pair<DaisywheelModifier, Boolean>>(replay = 1)
+    
     val modifiers = _modifierSelected
-        .scan(EnumSet.noneOf(DaisywheelModifier::class.java)) {s, (modifier, enabled) -> s.apply {
-                if (enabled) plus(modifier)
-                else minus(modifier)
+        .scan(EnumSet.noneOf(DaisywheelModifier::class.java)) { s, (modifier, enabled) -> s.apply {
+                if (enabled) {
+                    plus(modifier)
+                } else {
+                    minus(modifier)
+                }
             }
         }
         .stateIn(
             scope = viewModelScope,
-            // input is hot and scan is stateful
-            started = SharingStarted.Eagerly,
+            started = SharingStarted.WhileSubscribed(5000),
             initialValue = EnumSet.noneOf(DaisywheelModifier::class.java)
         )
 
     val state: StateFlow<DaisywheelState> = _petalSelected
+        .onStart { emit(-1) }  // Emit initial selection
         .combine(modifiers.map {
-            listOf(
-                DaisyPetal(listOf('a', 'b', 'c', 'd'), 270f), // Top
-                DaisyPetal(listOf('e', 'f', 'g', 'h'), 315f), // Top-right
-                DaisyPetal(listOf('i', 'j', 'k', 'l'), 0f), // Right
-                DaisyPetal(listOf('m', 'n', 'o', 'p'), 45f), // Bottom-right
-                DaisyPetal(listOf('q', 'r', 's', 't'), 90f), // Bottom
-                DaisyPetal(listOf('u', 'v', 'w', 'x'), 135f), // Bottom-left
-                DaisyPetal(listOf('y', 'z', ',', '.'), 180f), // Left
-                DaisyPetal(listOf(':', '/', '@', '-'), 225f), // Top-left
+            defaultLayout
+        }) { petal, layout -> 
+            DaisywheelState(
+                selectedPetalIndex = petal,
+                petals = layout
             )
-        }) { petal, layout -> DaisywheelState(selectedPetalIndex = petal, petals = layout)}
+        }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(),
+            started = SharingStarted.WhileSubscribed(5000),
             initialValue = DaisywheelState()
         )
 
+    // Emit the selected character index as a transient event
+    val selectedCharIndex: SharedFlow<Int> = _charSelected
+
     val characterSelected: Flow<Char> = _charSelected.combine(state) { char, s ->
-        s
-            .petals
+        s.petals
             // could be a modifier layout that doesn't have all petals filled
             .getOrNull(s.selectedPetalIndex)
             ?.characters
