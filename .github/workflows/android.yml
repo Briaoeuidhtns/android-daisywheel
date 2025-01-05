@@ -1,0 +1,36 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build with Gradle
+      run: ./gradlew build
+
+    - name: Get release file apk path
+      id: releaseApk
+      run: echo "apkfile=$(find app/build/outputs/apk/release/*.apk)" >> $GITHUB_OUTPUT
+      
+    - name: Upload Release Build to Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+         name: release-artifacts
+         path: ${{ steps.releaseApk.outputs.apkfile }}
