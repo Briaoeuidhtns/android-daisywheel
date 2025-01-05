@@ -86,6 +86,7 @@ class DaisywheelViewModel : ViewModel() {
     private val _charSelected = MutableSharedFlow<Int>(replay = 1)
     private val _modifierSelected = MutableSharedFlow<Pair<DaisywheelModifier, Boolean>>(replay = 1)
     private val _backspaceRequested = MutableSharedFlow<Unit>(replay = 1)
+    private val _spaceRequested = MutableSharedFlow<Unit>(replay = 1)
 
     val modifiers = _modifierSelected
         .scan(EnumSet.noneOf(DaisywheelModifier::class.java) as Set<DaisywheelModifier>) { s, (modifier, enabled) ->
@@ -163,6 +164,17 @@ class DaisywheelViewModel : ViewModel() {
      * Requests a backspace operation
      */
     fun requestBackspace() = _backspaceRequested.tryEmit(Unit)
+
+    val spaceRequested: SharedFlow<Unit> = _spaceRequested
+        .shareIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+        )
+
+    /**
+     * Requests a space character to be input
+     */
+    fun requestSpace() = _spaceRequested.tryEmit(Unit)
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

@@ -100,4 +100,21 @@ class DaisywheelViewModelTest {
             expectNoEvents()
         }
     }
+
+    @Test
+    fun `requesting space emits event`() = runTest {
+        viewModel.spaceRequested.test {
+            // Ensure no initial events
+            expectNoEvents()
+
+            // Request space
+            viewModel.requestSpace()
+
+            // Verify event was emitted
+            awaitItem()
+
+            // Ensure no more events
+            expectNoEvents()
+        }
+    }
 }

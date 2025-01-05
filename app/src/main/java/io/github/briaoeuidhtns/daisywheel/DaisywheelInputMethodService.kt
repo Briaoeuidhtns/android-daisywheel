@@ -60,6 +60,12 @@ class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, 
                 currentInputConnection?.deleteSurroundingText(1, 0)
             }
         }
+
+        lifecycleScope.launch {
+            viewModel.spaceRequested.collect {
+                currentInputConnection?.commitText(" ", 1)
+            }
+        }
     }
 
     override fun onCreateInputView(): View {
@@ -181,6 +187,10 @@ class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, 
             }
             KeyEvent.KEYCODE_BUTTON_L1 -> {
                 viewModel.requestBackspace()
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_R1 -> {
+                viewModel.requestSpace()
                 true
             }
             else -> super.onKeyDown(keyCode, event)
