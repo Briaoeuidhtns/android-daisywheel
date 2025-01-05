@@ -35,14 +35,27 @@ fun DaisyWheelKeyboard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val textMeasurer = rememberTextMeasurer()
 
+    val screenWidth = LocalView.current.resources.displayMetrics.widthPixels.dp
+    val screenHeight = LocalView.current.resources.displayMetrics.heightPixels.dp
+    
+    // Calculate the keyboard size based on screen dimensions
+    // Use 40% of the smaller screen dimension, but cap at 400.dp
+    val maxSize = 400.dp
+    val keyboardSize = minOf(
+        minOf(screenWidth, screenHeight) * 0.4f,
+        maxSize
+    )
+    
     Canvas(
         modifier = modifier
-            .size(300.dp)
+            .size(keyboardSize)
     ) {
+        val centerCircleRadius = size.minDimension * 0.08f
+
         // Draw center circle
         drawCircle(
             color = if (state.selectedPetalIndex == -1) Color.Blue else Color.DarkGray,
-            radius = 30f,
+            radius = centerCircleRadius,
             center = center
         )
 
@@ -53,6 +66,7 @@ fun DaisyWheelKeyboard(
                 isSelected = index == state.selectedPetalIndex,
                 index = index,
                 textMeasurer = textMeasurer,
+                canvasSize = size.minDimension
             )
         }
     }
@@ -62,9 +76,18 @@ private fun DrawScope.drawPetal(
     petal: DaisyPetal,
     isSelected: Boolean,
     index: Int,
-    textMeasurer: TextMeasurer
+    textMeasurer: TextMeasurer,
+    canvasSize: Float
 ) {
-    val radius = size.minDimension / 3
+    // Calculate sizes to prevent overlap
+    // For 8 petals, the minimum angle between centers is 45 degrees (2π/8)
+    // To prevent overlap, petal diameter must be less than the arc length at their radius
+    val petalSpacing = 1.2f  // Safety factor > 1 to ensure clear separation
+    
+    val radius = canvasSize * 0.35f  // Distance from center to petal center
+    val maxPetalSize = (2 * PI * radius / 8) / petalSpacing  // Maximum size that prevents overlap
+    val petalRadius = minOf(canvasSize * 0.1f, maxPetalSize.toFloat())  // Use smaller of calculated max or desired size
+    
     val angleInRadians = ((index + 6) % 8) * (2 * PI / 8)
 
     val petalCenter = Offset(
@@ -72,33 +95,35 @@ private fun DrawScope.drawPetal(
         y = center.y + (radius * sin(angleInRadians)).toFloat()
     )
 
+    // Character circles should not overlap within their petal
+    val charCircleRadius = petalRadius * 0.35f  // Reduced relative to petal size
+    val charDistance = petalRadius * 0.65f  // Closer to petal center to prevent overlap
+
     // Draw petal background
     drawCircle(
         color = if (isSelected) Color.Blue else Color.Gray,
-        radius = 40f,
+        radius = petalRadius,
         center = petalCenter
     )
 
     // Draw characters around the petal
-    // Start from top (270 degrees) and go clockwise
-    petal.characters.forEachIndexed { index, char ->
-        val charAngle = ((180 + (index * 90)) % 360) * (PI / 180f)
+    petal.characters.forEachIndexed { charIndex, char ->
+        val charAngle = ((180 + (charIndex * 90)) % 360) * (PI / 180f)
         val charOffset = Offset(
-            x = petalCenter.x + (30f * cos(charAngle)).toFloat(),
-            y = petalCenter.y + (30f * sin(charAngle)).toFloat()
+            x = petalCenter.x + (charDistance * cos(charAngle)).toFloat(),
+            y = petalCenter.y + (charDistance * sin(charAngle)).toFloat()
         )
 
         // Draw character circle background
         drawCircle(
-            // color = if (isSelected && selectedCharIndex == index) Color.Green else Color.White,
             color = Color.White,
-            radius = 15f,
+            radius = charCircleRadius,
             center = charOffset
         )
 
-        // Draw the character
+        // Draw the character with scaled font size
         val textStyle = TextStyle(
-            fontSize = 14.sp,
+            fontSize = (charCircleRadius * 1.2f).sp,  // Scale font with circle size
             color = Color.Black
         )
 
