@@ -20,7 +20,6 @@ import java.util.EnumSet
 
 data class DaisyPetal(
     val characters: List<Char>,
-    val angle: Float,
     val isSelected: Boolean = false,
 )
 
@@ -31,14 +30,14 @@ data class DaisywheelState(
 
 var defaultLayout =
     listOf(
-        DaisyPetal(listOf('a', 'b', 'c', 'd'), 270f), // Top
-        DaisyPetal(listOf('e', 'f', 'g', 'h'), 315f), // Top-right
-        DaisyPetal(listOf('i', 'j', 'k', 'l'), 0f), // Right
-        DaisyPetal(listOf('m', 'n', 'o', 'p'), 45f), // Bottom-right
-        DaisyPetal(listOf('q', 'r', 's', 't'), 90f), // Bottom
-        DaisyPetal(listOf('u', 'v', 'w', 'x'), 135f), // Bottom-left
-        DaisyPetal(listOf('y', 'z', ',', '.'), 180f), // Left
-        DaisyPetal(listOf(':', '/', '@', '-'), 225f), // Top-left
+        DaisyPetal(listOf('a', 'b', 'c', 'd')), // Top
+        DaisyPetal(listOf('e', 'f', 'g', 'h')), // Top-right
+        DaisyPetal(listOf('i', 'j', 'k', 'l')), // Right
+        DaisyPetal(listOf('m', 'n', 'o', 'p')), // Bottom-right
+        DaisyPetal(listOf('q', 'r', 's', 't')), // Bottom
+        DaisyPetal(listOf('u', 'v', 'w', 'x')), // Bottom-left
+        DaisyPetal(listOf('y', 'z', ',', '.')), // Left
+        DaisyPetal(listOf(':', '/', '@', '-')), // Top-left
     )
 
 enum class DaisywheelModifier {

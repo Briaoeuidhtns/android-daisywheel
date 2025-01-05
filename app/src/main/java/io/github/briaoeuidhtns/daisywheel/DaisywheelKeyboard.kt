@@ -51,7 +51,8 @@ fun DaisyWheelKeyboard(
             drawPetal(
                 petal = petal,
                 isSelected = index == state.selectedPetalIndex,
-                textMeasurer = textMeasurer
+                index = index,
+                textMeasurer = textMeasurer,
             )
         }
     }
@@ -60,10 +61,11 @@ fun DaisyWheelKeyboard(
 private fun DrawScope.drawPetal(
     petal: DaisyPetal,
     isSelected: Boolean,
+    index: Int,
     textMeasurer: TextMeasurer
 ) {
     val radius = size.minDimension / 3
-    val angleInRadians = petal.angle * (PI / 180f)
+    val angleInRadians = ((index + 6) % 8) * (2 * PI / 8)
 
     val petalCenter = Offset(
         x = center.x + (radius * cos(angleInRadians)).toFloat(),
