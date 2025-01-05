@@ -7,9 +7,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.stateIn
 import java.util.EnumSet
 
 data class DaisyPetal(
@@ -24,16 +30,16 @@ data class DaisywheelState(
 )
 
 var defaultLayout =
-        listOf(
-            DaisyPetal(listOf('a', 'b', 'c', 'd'), 270f), // Top
-            DaisyPetal(listOf('e', 'f', 'g', 'h'), 315f), // Top-right
-            DaisyPetal(listOf('i', 'j', 'k', 'l'), 0f), // Right
-            DaisyPetal(listOf('m', 'n', 'o', 'p'), 45f), // Bottom-right
-            DaisyPetal(listOf('q', 'r', 's', 't'), 90f), // Bottom
-            DaisyPetal(listOf('u', 'v', 'w', 'x'), 135f), // Bottom-left
-            DaisyPetal(listOf('y', 'z', ',', '.'), 180f), // Left
-            DaisyPetal(listOf(':', '/', '@', '-'), 225f), // Top-left
-        )
+    listOf(
+        DaisyPetal(listOf('a', 'b', 'c', 'd'), 270f), // Top
+        DaisyPetal(listOf('e', 'f', 'g', 'h'), 315f), // Top-right
+        DaisyPetal(listOf('i', 'j', 'k', 'l'), 0f), // Right
+        DaisyPetal(listOf('m', 'n', 'o', 'p'), 45f), // Bottom-right
+        DaisyPetal(listOf('q', 'r', 's', 't'), 90f), // Bottom
+        DaisyPetal(listOf('u', 'v', 'w', 'x'), 135f), // Bottom-left
+        DaisyPetal(listOf('y', 'z', ',', '.'), 180f), // Left
+        DaisyPetal(listOf(':', '/', '@', '-'), 225f), // Top-left
+    )
 
 enum class DaisywheelModifier {
     SHIFT,
@@ -44,15 +50,11 @@ class DaisywheelViewModel : ViewModel() {
     private val _petalSelected = MutableSharedFlow<Int>(replay = 1)
     private val _charSelected = MutableSharedFlow<Int>(replay = 1)
     private val _modifierSelected = MutableSharedFlow<Pair<DaisywheelModifier, Boolean>>(replay = 1)
-    
+    private val _backspaceRequested = MutableSharedFlow<Unit>(replay = 1)
+
     val modifiers = _modifierSelected
-        .scan(EnumSet.noneOf(DaisywheelModifier::class.java)) { s, (modifier, enabled) -> s.apply {
-                if (enabled) {
-                    plus(modifier)
-                } else {
-                    minus(modifier)
-                }
-            }
+        .scan(EnumSet.noneOf(DaisywheelModifier::class.java) as Set<DaisywheelModifier>) { s, (modifier, enabled) ->
+            if (enabled) s + modifier else s - (modifier)
         }
         .stateIn(
             scope = viewModelScope,
@@ -64,7 +66,7 @@ class DaisywheelViewModel : ViewModel() {
         .onStart { emit(-1) }  // Emit initial selection
         .combine(modifiers.map {
             defaultLayout
-        }) { petal, layout -> 
+        }) { petal, layout ->
             DaisywheelState(
                 selectedPetalIndex = petal,
                 petals = layout
@@ -78,7 +80,7 @@ class DaisywheelViewModel : ViewModel() {
 
     val charIndexSelected: SharedFlow<Int> = _charSelected
 
-    val characterSelected: Flow<Char> = charIndexSelected.map { char ->
+    val characterSelected: SharedFlow<Char> = charIndexSelected.map { char ->
         state.value.petals
             // could be a modifier layout that doesn't have all petals filled
             .getOrNull(state.value.selectedPetalIndex)
@@ -86,6 +88,10 @@ class DaisywheelViewModel : ViewModel() {
             ?.getOrNull(char)
     }
         .filterNotNull()
+        .shareIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+        )
 
     /**
      * Selects a petal by its index.
@@ -104,7 +110,19 @@ class DaisywheelViewModel : ViewModel() {
      * @param modifier The modifier to change
      * @param enable Should the modifier be enabled or disabled
      */
-    fun enableModifier(modifier: DaisywheelModifier, enable: Boolean = true) = _modifierSelected.tryEmit(Pair(modifier, enable))
+    fun enableModifier(modifier: DaisywheelModifier, enable: Boolean = true) =
+        _modifierSelected.tryEmit(Pair(modifier, enable))
+
+    val backspaceRequested: SharedFlow<Unit> = _backspaceRequested
+        .shareIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+        )
+
+    /**
+     * Requests a backspace operation
+     */
+    fun requestBackspace() = _backspaceRequested.tryEmit(Unit)
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

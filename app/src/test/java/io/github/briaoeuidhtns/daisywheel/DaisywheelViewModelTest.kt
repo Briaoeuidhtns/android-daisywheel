@@ -1,20 +1,21 @@
 package io.github.briaoeuidhtns.daisywheel
 
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import app.cash.turbine.test
+import app.cash.turbine.turbineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import kotlinx.coroutines.test.setMain
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestRule
-import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.TestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DaisywheelViewModelTest {
@@ -51,10 +52,13 @@ class DaisywheelViewModelTest {
 
     @Test
     fun `selecting character emits correct character`() = runTest {
-        viewModel.characterSelected.test {
+        turbineScope {
+            val stateTurbine = viewModel.state.testIn(backgroundScope)
+            val charTurbine = viewModel.characterSelected.testIn(backgroundScope)
             viewModel.selectPetal(0)
+            stateTurbine.awaitItem()
             viewModel.selectChar(0)
-            assertEquals('a', awaitItem())
+            assertEquals('a', charTurbine.awaitItem())
         }
     }
 
@@ -77,6 +81,23 @@ class DaisywheelViewModelTest {
             viewModel.enableModifier(DaisywheelModifier.SHIFT, false)
             val modifiers = awaitItem()
             assertFalse(modifiers.contains(DaisywheelModifier.SHIFT))
+        }
+    }
+
+    @Test
+    fun `requesting backspace emits event`() = runTest {
+        viewModel.backspaceRequested.test {
+            // Ensure no initial events
+            expectNoEvents()
+
+            // Request backspace
+            viewModel.requestBackspace()
+
+            // Verify event was emitted
+            awaitItem()
+
+            // Ensure no more events
+            expectNoEvents()
         }
     }
 }
