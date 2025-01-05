@@ -37,7 +37,43 @@ var defaultLayout =
         DaisyPetal(listOf('q', 'r', 's', 't')), // Bottom
         DaisyPetal(listOf('u', 'v', 'w', 'x')), // Bottom-left
         DaisyPetal(listOf('y', 'z', ',', '.')), // Left
-        DaisyPetal(listOf(':', '/', '@', '-')), // Top-left
+        DaisyPetal(listOf('\'', '"', '-', '@')), // Top-left
+    )
+
+var uppercaseLayout =
+    listOf(
+        DaisyPetal(listOf('A', 'B', 'C', 'D')), // Top
+        DaisyPetal(listOf('E', 'F', 'G', 'H')), // Top-right
+        DaisyPetal(listOf('I', 'J', 'K', 'L')), // Right
+        DaisyPetal(listOf('M', 'N', 'O', 'P')), // Bottom-right
+        DaisyPetal(listOf('Q', 'R', 'S', 'T')), // Bottom
+        DaisyPetal(listOf('U', 'V', 'W', 'X')), // Bottom-left
+        DaisyPetal(listOf('Y', 'Z', '!', '?')), // Left
+        DaisyPetal(listOf('_', ':', ';', '/')), // Top-left
+    )
+
+var numberLayout =
+    listOf(
+        DaisyPetal(listOf('1', '2', '3', '+')), // Top
+        DaisyPetal(listOf('4', '5', '6', '-')), // Top-right
+        DaisyPetal(listOf('7', '8', '9', '*')), // Right
+        DaisyPetal(listOf('0', '.', '=', '/')), // Bottom-right
+        DaisyPetal(listOf('(', ')', '[', ']')), // Bottom
+        DaisyPetal(listOf('<', '>', '{', '}')), // Bottom-left
+        DaisyPetal(listOf('\\', '|', ',', '.')), // Left
+        DaisyPetal(listOf('#', '$', '%', '^')), // Top-left
+    )
+
+var symbolLayout =
+    listOf(
+        DaisyPetal(listOf('!', '@', '#', '$')), // Top
+        DaisyPetal(listOf('%', '^', '&', '*')), // Top-right
+        DaisyPetal(listOf('~', '`', '±', '§')), // Right
+        DaisyPetal(listOf('©', '®', '™', '°')), // Bottom-right
+        DaisyPetal(listOf('£', '€', '¥', '¢')), // Bottom
+        DaisyPetal(listOf('¿', '¡', '¶', '†')), // Bottom-left
+        DaisyPetal(listOf('‹', '›', '«', '»')), // Left
+        DaisyPetal(listOf('•', '…', '¤', '∞')), // Top-left
     )
 
 enum class DaisywheelModifier {
@@ -63,8 +99,13 @@ class DaisywheelViewModel : ViewModel() {
 
     val state: StateFlow<DaisywheelState> = _petalSelected
         .onStart { emit(-1) }  // Emit initial selection
-        .combine(modifiers.map {
-            defaultLayout
+        .combine(modifiers.map { activeModifiers ->
+            when {
+                activeModifiers.containsAll(setOf(DaisywheelModifier.ALT, DaisywheelModifier.SHIFT)) -> symbolLayout
+                activeModifiers.contains(DaisywheelModifier.ALT) -> numberLayout
+                activeModifiers.contains(DaisywheelModifier.SHIFT) -> uppercaseLayout
+                else -> defaultLayout
+            }
         }) { petal, layout ->
             DaisywheelState(
                 selectedPetalIndex = petal,
