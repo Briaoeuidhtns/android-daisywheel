@@ -171,11 +171,35 @@ class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, 
                 viewModel.selectChar(0)
                 true
             }
+            KeyEvent.KEYCODE_BUTTON_L2 -> {
+                viewModel.enableModifier(DaisywheelModifier.SHIFT, event?.action != KeyEvent.ACTION_UP)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_R2 -> {
+                viewModel.enableModifier(DaisywheelModifier.ALT, event?.action != KeyEvent.ACTION_UP)
+                true
+            }
             KeyEvent.KEYCODE_BUTTON_L1 -> {
                 viewModel.requestBackspace()
                 true
             }
             else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        val viewModel = ViewModelProvider(this, DaisywheelViewModel.Factory)[DaisywheelViewModel::class.java]
+        
+        return when (keyCode) {
+            KeyEvent.KEYCODE_BUTTON_L2 -> {
+                viewModel.enableModifier(DaisywheelModifier.SHIFT, false)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_R2 -> {
+                viewModel.enableModifier(DaisywheelModifier.ALT, false)
+                true
+            }
+            else -> super.onKeyUp(keyCode, event)
         }
     }
 
