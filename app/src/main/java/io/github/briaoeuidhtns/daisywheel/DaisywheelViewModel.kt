@@ -76,13 +76,12 @@ class DaisywheelViewModel : ViewModel() {
             initialValue = DaisywheelState()
         )
 
-    // Emit the selected character index as a transient event
-    val selectedCharIndex: SharedFlow<Int> = _charSelected
+    val charIndexSelected: SharedFlow<Int> = _charSelected
 
-    val characterSelected: Flow<Char> = _charSelected.combine(state) { char, s ->
-        s.petals
+    val characterSelected: Flow<Char> = charIndexSelected.map { char ->
+        state.value.petals
             // could be a modifier layout that doesn't have all petals filled
-            .getOrNull(s.selectedPetalIndex)
+            .getOrNull(state.value.selectedPetalIndex)
             ?.characters
             ?.getOrNull(char)
     }

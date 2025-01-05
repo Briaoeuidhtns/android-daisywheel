@@ -18,13 +18,14 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.hypot
-import kotlin.math.PI
 
 class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, LifecycleOwner,
     SavedStateRegistryOwner {
@@ -45,6 +46,14 @@ class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, 
         savedStateRegistryController.performAttach()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+
+        val viewModel = ViewModelProvider(this, DaisywheelViewModel.Factory)[DaisywheelViewModel::class.java]
+
+        lifecycleScope.launch {
+            viewModel.characterSelected.collect { char ->
+                currentInputConnection?.commitText(char.toString(), 1)
+            }
+        }
     }
 
     override fun onCreateInputView(): View {
@@ -141,19 +150,19 @@ class DaisywheelInputMethodService : InputMethodService(), ViewModelStoreOwner, 
         
         return when (keyCode) {
             KeyEvent.KEYCODE_BUTTON_A -> {
-                viewModel.selectChar(0)
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_B -> {
-                viewModel.selectChar(1)
-                true
-            }
-            KeyEvent.KEYCODE_BUTTON_X -> {
                 viewModel.selectChar(2)
                 true
             }
-            KeyEvent.KEYCODE_BUTTON_Y -> {
+            KeyEvent.KEYCODE_BUTTON_B -> {
                 viewModel.selectChar(3)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_X -> {
+                viewModel.selectChar(1)
+                true
+            }
+            KeyEvent.KEYCODE_BUTTON_Y -> {
+                viewModel.selectChar(0)
                 true
             }
             else -> super.onKeyDown(keyCode, event)
