@@ -1,0 +1,24 @@
+* Android Daisywheel Keyboard
+
+An Android input method imitating Steam Big Picture mode's now defunct daisywheel keyboard interface for gamepad-based text input.
+
+** Features
+
+- Full gamepad-based text input using the daisywheel interface
+- Multiple character layouts:
+  - Lowercase letters (default)
+  - Uppercase letters (SHIFT modifier)
+  - Numbers and basic symbols (ALT modifier)
+  - Extended symbols (SHIFT + ALT modifier)
+- Material You theming support
+
+** Controls
+
+| Input          | Action                |
+|----------------+----------------------|
+| Joystick       | Select petal         |
+| A/B/X/Y        | Select character     |
+| L1             | Backspace            |
+| R1             | Space                |
+| L2             | SHIFT modifier       |
+| R2             | ALT modifier         |
